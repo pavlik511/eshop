@@ -1,26 +1,23 @@
 @import "tailwindcss";
 
+@theme {
+  --color-brand-primary: #facc15;    /* Ta tvoje žlutá */
+  --color-brand-secondary: #dc2626;  /* Červená (třeba na pálivé pizzy) */
+  --color-brand-dark: #18181b;       /* Tmavá na texty */
+  --color-brand-light: #fcfbf7;      /* Světlé pozadí webu */
+  
+  --font-heading: "Montserrat", sans-serif;
+
+}
+
 :root {
   --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --foreground: #111827;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
+
   font-family: Arial, Helvetica, sans-serif;
 }

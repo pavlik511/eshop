@@ -1,0 +1,2391 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+app/
+  admin/
+    edit/
+      [id]/
+        page.tsx
+    login/
+      page.tsx
+    actions.ts
+    page.tsx
+    sort-select.tsx
+  kontakt/
+    page.tsx
+  kosik/
+    page.tsx
+  menu/
+    [id]/
+      page.tsx
+    page.tsx
+  o-nas/
+    page.tsx
+  favicon.ico
+  globals.css
+  layout.tsx
+  page.tsx
+components/
+  Bestsellers.tsx
+  CartContext.tsx
+  Footer.tsx
+  Hero.tsx
+  Navbar.tsx
+  Newsletter.tsx
+  PizzaCard.tsx
+  PizzaDetailClient.tsx
+  WhyUs.tsx
+lib/
+  supabase.ts
+public/
+  file.svg
+  globe.svg
+  hero-pizza.png
+  next.svg
+  vercel.svg
+  window.svg
+.gitignore
+AGENTS.md
+CLAUDE.md
+constants.ts
+eslint.config.mjs
+middleware.ts
+next.config.ts
+package.json
+postcss.config.mjs
+README.md
+tsconfig.json
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="app/admin/edit/[id]/page.tsx">
+import { supabase } from '@/lib/supabase';
+import { updatePizzaAction } from '../../actions';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
+import Link from 'next/link';
+
+interface EditPizzaProps {
+  params: Promise<{ id: string }>;
+}
+
+export default async function EditPizzaPage({ params }: EditPizzaProps) {
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get('admin_session');
+
+  if (!sessionCookie || !sessionCookie.value) {
+    redirect('/admin/login');
+  }
+
+  const { id } = await params;
+
+  // Načteme pizzu i s jejími vazbami na alergeny
+  const { data: pizza, error } = await supabase
+    .from('pizzas')
+    .select(`
+      *,
+      pizza_allergens (
+        allergens (
+          code
+        )
+      )
+    `)
+    .eq('id', id)
+    .single();
+
+  if (error || !pizza) {
+    return (
+      <div className="p-8 text-center">
+        <p className="text-red-500 font-bold mb-4">Pizza nebyla nalezena!</p>
+        <Link href="/admin" className="underline">Zpět do administrace</Link>
+      </div>
+    );
+  }
+
+  const formattedIngredients = Array.isArray(pizza.ingredients)
+    ? pizza.ingredients.join(', ')
+    : pizza.ingredients || '';
+
+  // Vytáhneme kódy (např. "1, 7")
+  const currentAllergens = (pizza.pizza_allergens as any[])
+    ?.map(pa => pa.allergens?.code)
+    .filter(Boolean)
+    .sort((a, b) => a - b)
+    .join(', ') || '';
+
+  return (
+    <div className="min-h-screen bg-brand-light p-8">
+      <div className="max-w-xl mx-auto bg-white p-8 rounded-xl shadow-lg border border-gray-100">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-black text-brand-dark uppercase italic">
+            Upravit <span className="text-brand-primary">{pizza.name}</span>
+          </h1>
+          <Link href="/admin" className="text-xs font-bold text-gray-500 hover:underline">
+            Zrušit
+          </Link>
+        </div>
+
+        <form action={updatePizzaAction} className="space-y-4">
+          <input type="hidden" name="id" value={pizza.id} />
+
+          <div>
+            <label className="block text-xs font-bold text-brand-dark mb-1">Název</label>
+            <input 
+              name="name" 
+              type="text" 
+              defaultValue={pizza.name} 
+              className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-brand-primary outline-none text-sm text-neutral-900" 
+              required 
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-brand-dark mb-1">Ingredience (oddělené čárkou)</label>
+            <input 
+              name="ingredients" 
+              type="text" 
+              defaultValue={formattedIngredients} 
+              className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-brand-primary outline-none text-sm text-neutral-900" 
+              required 
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-brand-dark mb-1">Alergeny (čísla oddělená čárkou, např. 1, 7)</label>
+            <input 
+              name="allergens" 
+              type="text" 
+              defaultValue={currentAllergens} 
+              placeholder="1, 7"
+              className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-brand-primary outline-none text-sm text-neutral-900" 
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-brand-dark mb-1">Cena (Kč)</label>
+            <input 
+              name="price" 
+              type="number" 
+              defaultValue={pizza.price} 
+              className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-brand-primary outline-none text-sm text-neutral-900" 
+              required 
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-brand-dark mb-1">Obrázek (vyberte nový nebo ponechte stávající)</label>
+            <div className="flex items-center gap-4 mb-2">
+              {pizza.image && (
+                <img src={pizza.image} alt={pizza.name} className="w-12 h-12 rounded object-cover bg-gray-100" />
+              )}
+              <span className="text-xs text-gray-400">Aktuální fotka</span>
+            </div>
+            <input name="image" type="file" accept="image/*" className="w-full border border-gray-300 p-2 rounded text-sm" />
+          </div>
+
+          <div className="flex gap-4 pt-4">
+            <button type="submit" className="w-full bg-brand-primary text-brand-dark font-bold py-3 rounded hover:bg-yellow-500 text-sm uppercase cursor-pointer">
+              Uložit změny
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="app/admin/login/page.tsx">
+import { loginAction } from '../actions';
+
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const params = await searchParams;
+  const hasError = params.error === 'invalid_password';
+
+  return (
+    <main className="min-h-screen bg-neutral-100 flex items-center justify-center p-4">
+      <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-8 border border-neutral-200">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-black uppercase italic text-brand-dark tracking-tight">
+            Admin <span className="text-brand-primary">Pizzerie</span>
+          </h1>
+          <p className="text-neutral-500 text-sm mt-1">Zadej tajné heslo pro vstup do správy</p>
+        </div>
+
+        <form action={loginAction} className="space-y-4">
+          <div>
+            <label className="block text-sm font-bold text-neutral-700 mb-2 uppercase italic">
+              Heslo
+            </label>
+            <input
+              type="password"
+              name="password"
+              required
+              placeholder="••••••••"
+              className="w-full px-4 py-3 rounded-xl border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-yellow-500 text-neutral-900"
+            />
+          </div>
+
+          {hasError && (
+            <p className="text-red-500 text-sm font-semibold text-center">
+              ❌ Nesprávné heslo! Zkus to znovu.
+            </p>
+          )}
+
+          <button
+            type="submit"
+            className="w-full bg-brand-primary hover:bg-yellow-400 text-brand-dark font-black py-4 rounded-xl uppercase italic tracking-wider transition-colors shadow-md"
+          >
+            Vstoupit do administrace
+          </button>
+        </form>
+      </div>
+    </main>
+  );
+}
+</file>
+
+<file path="app/admin/actions.ts">
+'use server'
+
+import { supabase } from '@/lib/supabase';
+import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
+
+export async function loginAction(formData: FormData) {
+  const password = formData.get('password') as string;
+  const adminPassword = process.env.ADMIN_PASSWORD;
+
+  if (!adminPassword) {
+    throw new Error('Chybí ADMIN_PASSWORD v .env.local');
+  }
+
+  if (password === adminPassword) {
+    const cookieStore = await cookies();
+    cookieStore.set('admin_session', 'true', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 60 * 60 * 24,
+      path: '/',
+    });
+
+    redirect('/admin');
+  } else {
+    redirect('/admin/login?error=invalid_password');
+  }
+}
+
+export async function logoutAction() {
+  const cookieStore = await cookies();
+  cookieStore.delete('admin_session');
+  redirect('/admin/login');
+}
+
+export async function addPizzaAction(formData: FormData) {
+  const name = formData.get('name') as string;
+  const ingredientsRaw = formData.get('ingredients') as string;
+  const allergensRaw = formData.get('allergens') as string;
+  const price = formData.get('price') as string;
+  const imageFile = formData.get('image') as File;
+
+  if (!name || !ingredientsRaw || !price || !imageFile || imageFile.size === 0) {
+    throw new Error("Všechna pole včetně obrázku musí být vyplněna!");
+  }
+
+  const ingredientsArray = ingredientsRaw
+    .split(',')
+    .map(item => item.trim())
+    .filter(item => item !== "");
+
+  const allergenCodes = allergensRaw
+    ? allergensRaw.split(',').map(item => parseInt(item.trim(), 10)).filter(n => !isNaN(n))
+    : [];
+
+  const filename = `${Date.now()}-${imageFile.name.replaceAll(' ', '_')}`;
+
+  // 1. Upload obrázku do Storage
+  try {
+    const bytes = await imageFile.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+
+    const { error: uploadError } = await supabase.storage
+      .from('pizza-images')
+      .upload(filename, buffer, {
+        contentType: imageFile.type,
+        upsert: true
+      });
+
+    if (uploadError) throw uploadError;
+  } catch (error) {
+    console.error("Chyba při nahrávání do Supabase Storage:", error);
+    throw new Error("Nepodařilo se uložit obrázek do cloudu.");
+  }
+
+  const { data: { publicUrl } } = supabase.storage
+    .from('pizza-images')
+    .getPublicUrl(filename);
+
+  // 2. Vložení pizzy do tabulky pizzas
+  let newPizzaId: number;
+  try {
+    const { data: insertedPizza, error: dbError } = await supabase
+      .from('pizzas')
+      .insert([
+        { 
+          name, 
+          ingredients: ingredientsArray, 
+          price: Number(price), 
+          image: publicUrl 
+        }
+      ])
+      .select('id')
+      .single();
+
+    if (dbError || !insertedPizza) throw dbError;
+    newPizzaId = insertedPizza.id;
+  } catch (error) {
+    console.error("Chyba databáze Supabase:", error);
+    throw new Error("Nepodařilo se uložit pizzu do databáze.");
+  }
+
+  // 3. Propojení alergenů přes pizza_allergens
+  if (allergenCodes.length > 0) {
+    try {
+      const { data: matchedAllergens } = await supabase
+        .from('allergens')
+        .select('id, code')
+        .in('code', allergenCodes);
+
+      if (matchedAllergens && matchedAllergens.length > 0) {
+        const relations = matchedAllergens.map(a => ({
+          pizza_id: newPizzaId,
+          allergen_id: a.id
+        }));
+
+        await supabase.from('pizza_allergens').insert(relations);
+      }
+    } catch (error) {
+      console.error("Chyba při vazbě alergenů:", error);
+    }
+  }
+
+  revalidatePath('/'); 
+  revalidatePath('/menu');
+  revalidatePath('/admin');
+  redirect('/admin?success=true');
+}
+
+export async function deletePizzaAction(formData: FormData) {
+  const id = formData.get('id') as string;
+  if (!id) throw new Error("Chybí ID pizzy pro smazání!");
+
+  try {
+    const { data: pizza, error: fetchError } = await supabase
+      .from('pizzas')
+      .select('image')
+      .eq('id', id)
+      .single();
+
+    if (fetchError) throw fetchError;
+    
+    if (pizza && pizza.image) {
+      const imageUrl = pizza.image as string;
+      const filename = imageUrl.split('/').pop();
+      if (filename) {
+        await supabase.storage.from('pizza-images').remove([filename]);
+      }
+    }
+
+    // Vazby v pizza_allergens se smažou automaticky (při CASCADE ON DELETE) nebo je pro jistotu promažeme:
+    await supabase.from('pizza_allergens').delete().eq('pizza_id', id);
+
+    const { error: deleteError } = await supabase
+      .from('pizzas')
+      .delete()
+      .eq('id', id);
+
+    if (deleteError) throw deleteError;
+  } catch (error) {
+    console.error("Chyba při mazání pizzy:", error);
+    throw new Error("Nepodařilo se smazat pizzu.");
+  }
+
+  revalidatePath('/');
+  revalidatePath('/menu');
+  revalidatePath('/admin');
+  redirect('/admin');
+}
+
+export async function updatePizzaAction(formData: FormData) {
+  const id = formData.get('id') as string;
+  const name = formData.get('name') as string;
+  const ingredientsRaw = formData.get('ingredients') as string;
+  const allergensRaw = formData.get('allergens') as string;
+  const price = formData.get('price') as string;
+  const imageFile = formData.get('image') as File;
+
+  if (!id || !name || !ingredientsRaw || !price) {
+    throw new Error("Název, ingredience a cena jsou povinné!");
+  }
+
+  const ingredientsArray = ingredientsRaw
+    .split(',')
+    .map(item => item.trim())
+    .filter(item => item !== "");
+
+  const allergenCodes = allergensRaw
+    ? allergensRaw.split(',').map(item => parseInt(item.trim(), 10)).filter(n => !isNaN(n))
+    : [];
+
+  let publicUrl: string | null = null;
+
+  if (imageFile && imageFile.size > 0) {
+    const filename = `${Date.now()}-${imageFile.name.replaceAll(' ', '_')}`;
+    const bytes = await imageFile.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+
+    const { error: uploadError } = await supabase.storage
+      .from('pizza-images')
+      .upload(filename, buffer, {
+        contentType: imageFile.type,
+        upsert: true
+      });
+
+    if (!uploadError) {
+      const { data } = supabase.storage
+        .from('pizza-images')
+        .getPublicUrl(filename);
+      publicUrl = data.publicUrl;
+    }
+  }
+
+  const updateData: any = {
+    name,
+    ingredients: ingredientsArray,
+    price: Number(price),
+  };
+
+  if (publicUrl) {
+    updateData.image = publicUrl;
+  }
+
+  // 1. Update v pizzas
+  const { error } = await supabase
+    .from('pizzas')
+    .update(updateData)
+    .eq('id', id);
+
+  if (error) {
+    console.error("Chyba při úpravě pizzy:", error);
+    throw new Error("Nepodařilo se upravit pizzu.");
+  }
+
+  // 2. Synchronizace alergenů (staré smažeme, nové přidáme)
+  await supabase.from('pizza_allergens').delete().eq('pizza_id', id);
+
+  if (allergenCodes.length > 0) {
+    const { data: matchedAllergens } = await supabase
+      .from('allergens')
+      .select('id, code')
+      .in('code', allergenCodes);
+
+    if (matchedAllergens && matchedAllergens.length > 0) {
+      const relations = matchedAllergens.map(a => ({
+        pizza_id: Number(id),
+        allergen_id: a.id
+      }));
+      await supabase.from('pizza_allergens').insert(relations);
+    }
+  }
+
+  revalidatePath('/');
+  revalidatePath('/menu');
+  revalidatePath('/admin');
+  redirect('/admin');
+}
+</file>
+
+<file path="app/admin/page.tsx">
+import { addPizzaAction, deletePizzaAction, logoutAction } from './actions';
+import { supabase } from '@/lib/supabase';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
+import Link from 'next/link';
+import { SortSelect } from './sort-select';
+
+export default async function AdminPage(props: {
+  searchParams?: Promise<{ success?: string; sort?: string; q?: string }>;
+}) {
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get('admin_session');
+
+  if (!Boolean(sessionCookie?.value)) {
+    redirect('/admin/login');
+  }
+
+  const resolvedParams = props.searchParams ? await props.searchParams : {};
+  const currentSort = resolvedParams.sort || 'newest';
+
+  let query = supabase.from('pizzas').select('*');
+
+  if (currentSort === 'price_asc') {
+    query = query.order('price', { ascending: true });
+  } else if (currentSort === 'price_desc') {
+    query = query.order('price', { ascending: false });
+  } else if (currentSort === 'name_asc') {
+    query = query.order('name', { ascending: true });
+  } else {
+    query = query.order('id', { ascending: false });
+  }
+
+  const { data: pizzas } = await query;
+
+  return (
+    <div className="min-h-screen bg-brand-light p-8">
+      <div className="max-w-4xl mx-auto">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-black text-brand-dark uppercase italic">
+            Správa <span className="text-brand-primary">Menu</span>
+          </h1>
+          <div className="flex items-center gap-4">
+            <Link href="/" className="text-sm font-bold hover:underline text-brand-dark">
+              Zpět na web
+            </Link>
+
+            <form action={logoutAction}>
+              <button
+                type="submit"
+                className="text-xs font-bold bg-red-100 text-red-600 px-3 py-1.5 rounded hover:bg-red-200 cursor-pointer"
+              >
+                Odhlásit
+              </button>
+            </form>
+          </div>
+        </div>
+
+        {resolvedParams.success && (
+          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6 font-bold text-sm">
+            Pizza byla úspěšně přidána do pece! 🍕
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {/* LEVÝ SLOUPEC: FORMULÁŘ */}
+          <div className="md:col-span-1">
+            <form
+              action={addPizzaAction}
+              className="bg-white p-6 rounded-xl shadow-lg border border-gray-100 sticky top-8"
+            >
+              <h2 className="text-lg font-bold mb-4 text-brand-dark">Přidat novou</h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-brand-dark mb-1">Název</label>
+                  <input
+                    name="name"
+                    type="text"
+                    className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-brand-primary outline-none text-sm text-neutral-900"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-brand-dark mb-1">Ingredience (oddělené čárkou)</label>
+                  <input
+                    name="ingredients"
+                    type="text"
+                    placeholder="Tomáty, Mozzarella"
+                    className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-brand-primary outline-none text-sm text-neutral-900"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-brand-dark mb-1">Alergeny (čísla oddělená čárkou)</label>
+                  <input
+                    name="allergens"
+                    type="text"
+                    placeholder="1, 7"
+                    className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-brand-primary outline-none text-sm text-neutral-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-brand-dark mb-1">Cena (Kč)</label>
+                  <input
+                    name="price"
+                    type="number"
+                    className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-brand-primary outline-none text-sm text-neutral-900"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-brand-dark mb-1">Obrázek</label>
+                  <input
+                    name="image"
+                    type="file"
+                    accept="image/*"
+                    className="w-full border border-gray-300 p-2 rounded text-sm"
+                    required
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="w-full bg-brand-primary text-brand-dark font-bold py-3 rounded hover:bg-yellow-500 text-sm uppercase transition-colors cursor-pointer"
+                >
+                  Uložit pizzu
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* PRAVÝ SLOUPEC: SEZNAM A SELECT FILTR */}
+          <div className="md:col-span-2">
+            <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 border-b pb-4">
+                <h2 className="text-xl font-bold text-brand-dark">Aktuální nabídka ({pizzas?.length || 0})</h2>
+                <SortSelect currentSort={currentSort} />
+              </div>
+
+              {(!pizzas || pizzas.length === 0) ? (
+                <p className="text-gray-500 text-sm">V nabídce zatím nejsou žádné pizzy.</p>
+              ) : (
+                <div className="space-y-4">
+                  {pizzas.map((pizza) => (
+                    <div key={pizza.id} className="flex items-center justify-between p-4 border border-gray-100 rounded-lg bg-gray-50">
+                      <div className="flex items-center gap-4">
+                        <img src={pizza.image} alt={pizza.name} className="w-12 h-12 rounded object-cover bg-gray-200" />
+                        <div>
+                          <h3 className="font-bold text-gray-800">{pizza.name}</h3>
+                          <p className="text-xs text-gray-500">{pizza.price} Kč</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href={`/admin/edit/${pizza.id}`}
+                          className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold px-3 py-1.5 rounded text-xs transition-colors border border-gray-300"
+                        >
+                          Upravit
+                        </Link>
+
+                        <form action={deletePizzaAction}>
+                          <input type="hidden" name="id" value={pizza.id} />
+                          <button type="submit" className="bg-red-50 text-red-600 hover:bg-red-100 font-bold px-3 py-1.5 rounded text-xs transition-colors border border-red-200 cursor-pointer">
+                            Smazat
+                          </button>
+                        </form>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="app/admin/sort-select.tsx">
+'use client'
+
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import { useTransition } from 'react';
+
+interface SortSelectProps {
+  currentSort: string;
+  showNewest?: boolean; // Optional prop (přidáno pro uživatelské menu)
+}
+
+export function SortSelect({ currentSort, showNewest = true }: SortSelectProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const [isPending, startTransition] = useTransition();
+
+  const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newSort = e.target.value;
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('sort', newSort);
+
+    startTransition(() => {
+      router.push(`${pathname}?${params.toString()}`, { scroll: false });
+    });
+  };
+
+  return (
+    <div className={isPending ? 'opacity-60' : 'opacity-100'}>
+      <select 
+        name="sort" 
+        value={currentSort}
+        disabled={isPending}
+        onChange={handleSortChange}
+        className="border border-gray-300 rounded p-2 text-xs text-gray-700 bg-white focus:ring-2 focus:ring-brand-primary outline-none cursor-pointer font-medium"
+      >
+        {/* Zobrazí se JEN když je showNewest true */}
+        {showNewest && <option value="newest">Nejnovější</option>}
+        
+        <option value="price_asc">Od nejlevnější</option>
+        <option value="price_desc">Od nejdražší</option>
+        <option value="name_asc">Abecedně (A-Z)</option>
+      </select>
+    </div>
+  );
+}
+</file>
+
+<file path="app/kontakt/page.tsx">
+export default function KontaktPage() {
+  return (
+    // Změněno pozadí na neutral-50 a barva textu na tmavou
+    <div className="w-full bg-neutral-50 text-brand-dark font-sans selection:bg-brand-primary selection:text-brand-dark">
+      
+      {/* HERO SEKCE */}
+      <section className="py-20 px-6 text-center bg-brand-dark text-white">
+        <div className="max-w-4xl mx-auto">
+          <h1 className="text-5xl md:text-7xl font-black uppercase italic tracking-tight mb-3">
+            Kontaktujte <span className="text-brand-primary">Nás</span>
+          </h1>
+          <p className="text-sm md:text-lg font-bold uppercase tracking-wider max-w-xl mx-auto border-t border-white/20 pt-3 text-gray-300">
+            Máte hlad? Chcete catering? Ozvěte se.
+          </p>
+        </div>
+      </section>
+
+      {/* HLAVNÍ OBSAH */}
+      <section className="max-w-5xl mx-auto py-16 px-6 bg-neutral-50">
+        <div className="grid md:grid-cols-2 gap-12 items-start">
+          
+          {/* LEVÝ SLOUPEC: ÚDAJE */}
+          <div className="space-y-8">
+            <div>
+              <h2 className="text-2xl font-black text-brand-dark uppercase italic mb-4 border-l-4 border-brand-primary pl-3">
+                Kde nás najdete & Kudy k nám
+              </h2>
+              <div className="space-y-2 text-gray-600 text-lg">
+                <p className="font-bold text-brand-dark">🍕 Pavlík's Pizza</p>
+                <p>Italská ulice 123/4</p>
+                <p>120 00 Praha 2 - Vinohrady</p>
+              </div>
+            </div>
+
+            <div>
+              <h2 className="text-2xl font-black text-brand-dark uppercase italic mb-4 border-l-4 border-brand-primary pl-3">
+                Rychlé spojení
+              </h2>
+              <div className="space-y-3 font-bold text-lg text-gray-700">
+                <p className="flex items-center gap-3">📞 <span className="text-brand-dark">+420 123 456 789</span></p>
+                <p className="flex items-center gap-3">✉️ <span className="text-brand-dark">ahoj@pavlikovapizza.cz</span></p>
+              </div>
+            </div>
+
+            <div>
+              <h2 className="text-xl font-bold text-brand-dark uppercase mb-3">
+                Fakturační údaje
+              </h2>
+              <div className="text-sm text-gray-500 space-y-1">
+                <p>Provozovatel: Pavlík's Food s.r.o.</p>
+                <p>IČO: 12345678 | DIČ: CZ12345678</p>
+                <p>Společnost je zapsaná v obchodním rejstříku.</p>
+              </div>
+            </div>
+          </div>
+
+          {/* PRAVÝ SLOUPEC: MAPA & DOTAZ */}
+          <div className="space-y-8">
+            {/* Mapa bez tmavého filtru */}
+            <div className="w-full h-64 bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+              <iframe 
+                src="https://maps.google.com/maps?q=Italsk%C3%A1%20123,%20Praha&t=&z=15&ie=UTF8&iwloc=&output=embed" 
+                className="w-full h-full border-none opacity-90"
+                allowFullScreen
+                loading="lazy"
+              ></iframe>
+            </div>
+
+            {/* Formulář přizpůsobený světlému režimu */}
+            <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+              <h3 className="text-lg font-bold uppercase text-brand-dark mb-4">Napište nám přímo odtud</h3>
+              <div className="space-y-3">
+                <input type="email" placeholder="Tvůj E-mail" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded text-sm text-brand-dark focus:border-brand-primary outline-none" />
+                <textarea rows={3} placeholder="Tvoje zpráva..." className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded text-sm text-brand-dark focus:border-brand-primary outline-none resize-none"></textarea>
+                <button className="w-full bg-brand-primary text-brand-dark font-bold py-2.5 rounded text-sm hover:bg-yellow-500 transition-colors uppercase">
+                  Odeslat zprávu
+                </button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </div>
+  );
+}
+</file>
+
+<file path="app/kosik/page.tsx">
+"use client";
+
+import Link from "next/link";
+import Image from "next/image";
+import { useCart } from "@/components/CartContext";
+
+export default function KosikPage() {
+  const { cart, updateQuantity, removeFromCart, cartCount, totalPrice } = useCart();
+
+  return (
+    <main className="bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 min-h-[calc(100vh-200px)]">
+      <div className="max-w-[85rem] mx-auto">
+        <div className="mb-8 max-w-5xl mx-auto">
+          <Link 
+            href="/" 
+            className="inline-flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-brand-dark mb-4 transition-colors"
+          >
+            ← Zpět do obchodu
+          </Link>
+          <h1 className="text-3xl font-heading font-black text-brand-dark uppercase italic tracking-tighter">
+            Váš <span className="text-brand-primary">Košík</span>
+          </h1>
+          <p className="text-gray-500 text-sm mt-1">
+            {cartCount === 0 ? "Košík zeje prázdnotou." : `Máte v košíku ${cartCount} ${cartCount === 1 ? 'položku' : cartCount < 5 ? 'položky' : 'položek'}.`}
+          </p>
+        </div>
+
+        {cartCount === 0 ? (
+          <div className="max-w-xl mx-auto bg-white border border-gray-200 rounded-3xl p-12 text-center shadow-sm">
+            <div className="text-5xl mb-4">🍕</div>
+            <h2 className="text-xl font-bold text-gray-800 mb-2">Ještě jste si nevybrali?</h2>
+            <p className="text-gray-600 mb-6 text-sm">
+              Naše pece jedou naplno! Vraťte se na menu a vyberte si něco dobrého.
+            </p>
+            <Link 
+              href="/menu"
+              className="inline-flex items-center gap-x-2 bg-brand-dark text-white px-6 py-3 rounded-full text-sm font-bold hover:bg-brand-primary hover:text-brand-dark transition-all uppercase tracking-wider"
+            >
+              Zpět na nabídku
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-5xl mx-auto items-start">
+            <div className="lg:col-span-2 bg-white border border-gray-200 rounded-3xl p-6 shadow-sm divide-y divide-gray-100">
+              {cart.map((item) => (
+                <div key={item.cartItemId} className="flex flex-col sm:flex-row items-start sm:items-center justify-between py-4 first:pt-0 last:pb-0 gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="relative size-16 rounded-xl overflow-hidden bg-gray-100 shrink-0">
+                      {item.pizza.image ? (
+                        <Image src={item.pizza.image} alt={item.pizza.name} fill className="object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">🍕</div>
+                      )}
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-gray-800 text-lg">{item.pizza.name}</h3>
+                      
+                      {/* Čisté zobrazení extra surovin pod názvem */}
+                      {item.selectedExtras.length > 0 ? (
+                        <p className="text-xs text-amber-700 font-medium">
+                          + {item.selectedExtras.map((e) => e.name).join(", ")}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-gray-400">Základní varianta</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between w-full sm:w-auto gap-6 pt-2 sm:pt-0 border-t sm:border-0 border-gray-100">
+                    <div className="flex items-center bg-gray-100 rounded-full p-1 border border-gray-200 gap-1">
+                      <button 
+                        onClick={() => updateQuantity(item.cartItemId, -1)}
+                        className="size-7 bg-white rounded-full flex items-center justify-center text-sm font-bold shadow-sm hover:bg-red-500 hover:text-white transition-colors active:scale-90"
+                        title="Odebrat 1 ks"
+                      >
+                        -
+                      </button>
+
+                      <span className="px-3 text-sm font-bold text-gray-700 min-w-[2.5rem] text-center">
+                        {item.quantity} ks
+                      </span>
+
+                      <button 
+                        onClick={() => updateQuantity(item.cartItemId, 1)}
+                        className="size-7 bg-white rounded-full flex items-center justify-center text-sm font-bold shadow-sm hover:bg-brand-primary transition-colors active:scale-90"
+                        title="Přidat 1 ks"
+                      >
+                        +
+                      </button>
+                    </div>
+
+                    <div className="text-right min-w-[80px]">
+                      <span className="font-bold text-gray-800">{item.unitPrice * item.quantity} Kč</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="lg:col-span-1 bg-brand-dark text-white rounded-3xl p-6 shadow-xl sticky top-24">
+              <h2 className="text-xl font-heading font-black uppercase italic tracking-wider mb-6 border-b border-white/10 pb-4">
+                Shrnutí
+              </h2>
+
+              <div className="space-y-3 mb-6 text-sm">
+                <div className="flex justify-between text-gray-400">
+                  <span>Mezisoučet:</span>
+                  <span className="text-white font-bold">{totalPrice} Kč</span>
+                </div>
+                <div className="flex justify-between text-gray-400">
+                  <span>Doprava:</span>
+                  <span className="text-brand-primary font-bold">Zdarma</span>
+                </div>
+                <div className="border-t border-white/10 pt-3 flex justify-between items-center">
+                  <span className="font-medium text-base">Celkem:</span>
+                  <span className="text-2xl font-black text-brand-primary italic">{totalPrice} Kč</span>
+                </div>
+              </div>
+
+              <button 
+                onClick={() => alert("Objednávka odeslána!")}
+                className="w-full py-4 px-4 inline-flex justify-center items-center gap-x-2 text-sm font-black rounded-xl border border-transparent bg-brand-primary text-brand-dark hover:bg-white transition-all uppercase italic tracking-wider active:scale-[0.99] shadow-lg cursor-pointer"
+              >
+                Pokračovat v objednávce
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </main>
+  );
+}
+</file>
+
+<file path="app/menu/[id]/page.tsx">
+import { supabase } from "@/lib/supabase";
+import { notFound } from "next/navigation";
+import PizzaDetailClient from "@/components/PizzaDetailClient";
+import { Pizza, ExtraIngredient } from "@/constants";
+
+interface PizzaDetailPageProps {
+  params: Promise<{ id: string }>;
+}
+
+// Přesný TypeScript typ pro data, která vrátí Supabase JOIN
+interface SupabasePizzaWithAllergens {
+  id: number;
+  name: string;
+  price: number;
+  image: string;
+  ingredients: string[];
+  pizza_allergens: Array<{
+    allergens: {
+      code: number;
+      name: string;
+    } | null;
+  }> | null;
+}
+
+export default async function PizzaDetailPage({ params }: PizzaDetailPageProps) {
+  const { id } = await params;
+
+  const { data: pizzaData, error: pizzaError } = await supabase
+    .from("pizzas")
+    .select(`
+      id,
+      name,
+      price,
+      image,
+      ingredients,
+      pizza_allergens (
+        allergens (
+          code,
+          name
+        )
+      )
+    `)
+    .eq("id", id)
+    .single();
+
+  if (pizzaError || !pizzaData) {
+    notFound();
+  }
+
+  const rawPizza = pizzaData as unknown as SupabasePizzaWithAllergens;
+
+  const { data: extraIngredients } = await supabase
+    .from("extra_ingredients")
+    .select("*")
+    .order("price", { ascending: true });
+
+  // Čisté přetypované mapování bez 'any'
+  const allergens: string[] = rawPizza.pizza_allergens
+    ? rawPizza.pizza_allergens
+        .map((pa) => (pa.allergens ? `${pa.allergens.code} - ${pa.allergens.name}` : null))
+        .filter((item): item is string => item !== null)
+    : [];
+
+  const formattedPizza: Pizza = {
+    id: Number(rawPizza.id),
+    name: rawPizza.name,
+    price: Number(rawPizza.price),
+    image: rawPizza.image,
+    ingredients: rawPizza.ingredients,
+    allergens: allergens,
+  };
+
+  return (
+    <PizzaDetailClient 
+      pizza={formattedPizza} 
+      extraIngredients={(extraIngredients as ExtraIngredient[]) || []} 
+    />
+  );
+}
+</file>
+
+<file path="app/menu/page.tsx">
+import { supabase } from '@/lib/supabase';
+import PizzaCard from '@/components/PizzaCard';
+import { Pizza } from '@/constants';
+import { SortSelect } from '../admin/sort-select';
+import Link from 'next/link';
+
+interface MenuPageProps {
+  searchParams?: Promise<{ sort?: string }>;
+}
+
+export default async function MenuPage(props: MenuPageProps) {
+  try {
+    const resolvedParams = props.searchParams ? await props.searchParams : {};
+    const currentSort = resolvedParams.sort || 'newest';
+
+    // Dynamické řazení podle vybraného filtru
+    let query = supabase.from('pizzas').select('*');
+
+    if (currentSort === 'price_asc') {
+      query = query.order('price', { ascending: true });
+    } else if (currentSort === 'price_desc') {
+      query = query.order('price', { ascending: false });
+    } else if (currentSort === 'name_asc') {
+      query = query.order('name', { ascending: true });
+    } else {
+      query = query.order('id', { ascending: false });
+    }
+
+    const { data: pizzas, error } = await query;
+
+    if (error) {
+      throw error;
+    }
+
+    return (
+      <main className="bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 min-h-[calc(100vh-200px)]">
+        <div className="max-w-[85rem] mx-auto">
+          
+          {/* Hlavička */}
+          <div className="text-center mb-8 max-w-2xl mx-auto">
+            <Link 
+              href="/" 
+              className="inline-flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-brand-dark mb-4 transition-colors"
+            >
+              ← Zpět na hlavní stranu
+            </Link>
+            <h1 className="text-4xl sm:text-5xl font-heading font-black text-brand-dark uppercase italic tracking-tighter mb-3">
+              Kompletní <span className="text-brand-primary">Nabídka</span>
+            </h1>
+            <p className="text-gray-600 text-sm sm:text-base">
+              Vyberte si z naší nabídky poctivých pizz pečených v kamenné peci.
+            </p>
+          </div>
+
+          {/* Řadící lišta */}
+          <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-200">
+            <span className="text-sm font-bold text-gray-500">
+              Celkem pizz: {pizzas?.length || 0}
+            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-gray-400 uppercase hidden sm:inline">Řadit:</span>
+              <SortSelect currentSort={currentSort} />
+            </div>
+          </div>
+
+          {/* Mřížka se všemi pizzami */}
+          {!pizzas || pizzas.length === 0 ? (
+            <div className="text-center py-16 bg-white rounded-3xl border border-gray-200 max-w-lg mx-auto shadow-sm">
+              <p className="text-gray-500 font-bold">V nabídce zatím nejsou žádné pizzy.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {pizzas.map((pizza: Pizza) => (
+                <PizzaCard key={pizza.id} pizza={pizza} />
+              ))}
+            </div>
+          )}
+
+        </div>
+      </main>
+    );
+  } catch (error) {
+    console.error("Chyba při načítání menu:", error);
+    return (
+      <main className="min-h-[50vh] flex flex-col items-center justify-center">
+        <p className="text-red-500 font-bold text-lg">Nepodařilo se načíst nabídku pizz.</p>
+      </main>
+    );
+  }
+}
+</file>
+
+<file path="app/o-nas/page.tsx">
+export default function AboutUsPage() {
+  return (
+    // Změněno z čistě tmavé na neutrální světlý základ, tmavé jsou jen vybrané sekce
+    <div className="min-h-screen bg-neutral-50 text-brand-dark font-sans selection:bg-brand-primary selection:text-brand-dark">
+      
+      {/* 1. HERO SEKCE - SJEDNOCENÁ S KONTAKTNÍ STRÁNKOU (Tmavá, py-20, stejné texty) */}
+      <section className="py-20 px-6 text-center bg-brand-dark text-white">
+        <div className="max-w-4xl mx-auto">
+          <h1 className="text-5xl md:text-7xl font-black uppercase italic tracking-tight mb-3">
+            Pavlík's <span className="text-brand-primary">Pizza</span>
+          </h1>
+          <p className="text-sm md:text-lg font-bold uppercase tracking-wider max-w-xl mx-auto border-t border-white/20 pt-3 text-gray-300">
+            Náš Příběh: Od první pece k vaší radosti
+          </p>
+        </div>
+      </section>
+
+      {/* 2. PŘÍBĚH - OD GARÁŽE K OHNI (Světlé pozadí) */}
+      <section className="max-w-5xl mx-auto py-20 px-6 bg-neutral-50">
+        <div className="grid md:grid-cols-2 gap-12 items-center">
+          <div>
+            <h2 className="text-4xl font-black text-gray-800 mb-6 uppercase italic border-l-4 border-brand-primary pl-4">
+              Od garáže k ohni
+            </h2>
+            <p className="text-gray-600 leading-relaxed text-lg mb-4">
+              V roce 2015 jsme začali s jednou starou pecí a snem upéct tu nejkřupavější pizzu v okolí. Dnes je náš oheň symbolem kvality, na kterou se můžete spolehnout.
+            </p>
+            <p className="text-gray-600 leading-relaxed text-lg">
+              Věříme, že nejlepší věci vyžadují čas. Naše pec dosahuje teploty přes 450 °C, což znamená, že pizza je hotová za necelých 90 sekund. Tento prudký žár uvězní vlhkost uvnitř těsta, zatímco zvenku vytvoří ty ikonické "leopardí skvrny". To je ten rozdíl mezi jídlem a zážitkem.
+            </p>
+          </div>
+          <div className="bg-white h-96 rounded-2xl overflow-hidden border border-neutral-200 shadow-md relative flex items-center justify-center text-neutral-400">
+            {/* Tady bude obrázek pece */}
+            <span className="text-sm uppercase tracking-widest font-bold">Obrázek: Naše pec s ohněm</span>
+          </div>
+        </div>
+      </section>
+
+      {/* 3. TŘI HLAVNÍ PILÍŘE (Ponecháno tmavé jako kontrastní předěl) */}
+      <section className="bg-brand-dark border-y border-brand-primary py-20 px-6">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-3xl font-black text-center text-brand-primary mb-12 uppercase italic tracking-wide">
+            Proč pečeme jinak?
+          </h2>
+          <div className="grid md:grid-cols-3 gap-8">
+            
+            <div className="bg-brand-dark p-8 rounded-2xl border-b-4 border-text-brand-primary shadow-md border border-neutral-800">
+              <div className="text-yellow-500 text-4xl mb-4">🌾</div>
+              <h3 className="text-xl font-bold text-white mb-3 uppercase">Pravá Kvalita</h3>
+              <p className="text-neutral-400 text-sm leading-relaxed">
+                Používáme výhradně mouku typu "00" z rodinného mlýna a rajčata San Marzano, která rostou pod italským sluncem.
+              </p>
+            </div>
+
+            <div className="bg-brand-dark p-8 rounded-2xl border-b-4 border-text-brand-primary shadow-md border border-neutral-800">
+              <div className="text-yellow-500 text-4xl mb-4">🔥</div>
+              <h3 className="text-xl font-bold text-white mb-3 uppercase">Dřevo & Oheň</h3>
+              <p className="text-neutral-400 text-sm leading-relaxed">
+                Žádný plyn, žádná elektřina. Naše pece hoří bukovým dřevem, které dává těstu nezaměnitelné kouřové aroma.
+              </p>
+            </div>
+
+            <div className="bg-brand-dark p-8 rounded-2xl border-b-4 border-text-brand-primary shadow-md border border-neutral-800">
+              <div className="text-yellow-500 text-4xl mb-4">❤️</div>
+              <h3 className="text-xl font-bold text-white mb-3 uppercase">Láska k těstu</h3>
+              <p className="text-neutral-400 text-sm leading-relaxed">
+                Naše těsto kyne minimálně 48 hodin. Jen tak dosáhneme extrémní lehkosti a vzdušnosti, po které vám nebude těžko.
+              </p>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      {/* 4. MEDAILONEK - KDO ZA TÍM STOJÍ (Světlé pozadí) */}
+      <section className="max-w-5xl mx-auto py-20 px-6 bg-neutral-50">
+        <div className="grid md:grid-cols-2 gap-12 items-center">
+          <div className="order-2 md:order-1 bg-white h-96 rounded-full w-96 mx-auto overflow-hidden border-4 border-brand-primary shadow-xl flex items-center justify-center text-neutral-400">
+            {/* Tady bude tvoje fotka nebo ilustrace kuchaře */}
+            <span className="text-sm uppercase tracking-widest font-bold">Foto: Pavlík</span>
+          </div>
+          <div className="order-1 md:order-2">
+            <h2 className="text-3xl font-black text-brand-primary mb-6 uppercase italic">
+              Kdo za tím stojí?
+            </h2>
+            <h3 className="text-xl font-bold text-neutral-900 mb-2">Pavlík, zakladatel & pizzaiolo</h3>
+            <p className="text-neutral-700 italic leading-relaxed mb-4 text-lg border-l-2 border-neutral-400 pl-4">
+              "Pizza pro mě není jen práce, je to posedlost. Strávil jsem měsíce v Neapoli, abych pochopil, že tajemství není v tajném receptu, ale v trpělivosti a surovinách."
+            </p>
+            <p className="text-neutral-600 leading-relaxed">
+              Pavlík osobně každé ráno dohlíží na míchání nové várky těsta z 120 kilogramů mouky a vybírá dodavatele, se kterými se zná osobně jménem. Nepoužíváme mrazáky ani polotovary.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* 5. SUROVINY S RODOKMENEM (Žlutý akcent pro oživení webu) */}
+      <section className="bg-brand-primary py-16 px-6 text-neutral-950">
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 className="text-3xl font-black text-neutral-950 mb-8 uppercase italic">
+            Suroviny s rodokmenem
+          </h2>
+          <div className="grid md:grid-cols-2 gap-6 text-left max-w-2xl mx-auto">
+            <div className="flex gap-3 items-start">
+              <span className="text-neutral-950 font-bold">✓</span>
+              <p className="text-neutral-900"><strong className="text-neutral-950">Mozzarella di Bufala:</strong> Vozíme ji čerstvou přímo z Kampánie dvakrát týdně.</p>
+            </div>
+            <div className="flex gap-3 items-start">
+              <span className="text-neutral-950 font-bold">✓</span>
+              <p className="text-neutral-900"><strong className="text-neutral-950">Lokální bylinky:</strong> Čerstvou bazalku a oregano odebíráme od paní Marie z vedlejší vesnice.</p>
+            </div>
+            <div className="flex gap-3 items-start">
+              <span className="text-neutral-950 font-bold">✓</span>
+              <p className="text-neutral-900"><strong className="text-neutral-950">Panenský olej:</strong> Lisovaný za studena v malém olivovém háji v Toskánsku.</p>
+            </div>
+            <div className="flex gap-3 items-start">
+              <span className="text-neutral-950 font-bold">✓</span>
+              <p className="text-neutral-900"><strong className="text-neutral-950">Žádné kompromisy:</strong> Pokud není surovina v daný den perfektní, na naši pizzu prostě nesmí.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 6. INFO + OTEVÍRACÍ DOBA (Světlé čisté pozadí) */}
+      <section className="max-w-4xl mx-auto py-20 px-6 text-center md:text-left bg-neutral-50">
+        <div className="grid md:grid-cols-2 gap-12">
+          <div>
+            <h2 className="text-2xl font-black text-gray-800 mb-6 uppercase italic">
+              Kde a kdy nás najdete
+            </h2>
+            <div className="border border-neutral-200 rounded-xl overflow-hidden bg-white shadow-sm">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-neutral-950 text-brand-primary font-bold uppercase">
+                    <th className="p-3 text-left">Den</th>
+                    <th className="p-3 text-left">Otevírací doba</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-200 text-neutral-700">
+                  <tr><td className="p-3 font-bold text-neutral-900">Pondělí - Čtvrtek</td><td className="p-3">11:00 - 22:00</td></tr>
+                  <tr><td className="p-3 font-bold text-neutral-900">Pátek - Sobota</td><td className="p-3">11:00 - 00:00</td></tr>
+                  <tr><td className="p-3 font-bold text-neutral-900">Neděle</td><td className="p-3">12:00 - 21:00</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div className="flex flex-col justify-center">
+            <h2 className="text-2xl font-black text-gray-800 mb-4 uppercase italic">
+              Máte dotaz?
+            </h2>
+            <p className="text-neutral-600 mb-6">
+              Jsme tu pro vás. Ať už plánujete oslavu, firemní catering, nebo se chcete zeptat na alergeny.
+            </p>
+            <div className="space-y-2 text-neutral-900 font-bold">
+              <p>📞 +420 123 456 789</p>
+              <p>✉️ ahoj@pavlikovapizza.cz</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  );
+}
+</file>
+
+<file path="components/Bestsellers.tsx">
+import { supabase } from '@/lib/supabase';
+import PizzaCard from './PizzaCard';
+import { Pizza } from '@/constants';
+import Link from 'next/link';
+
+export default async function Bestsellers() {
+  try {
+    // Vytáhneme pouze 3 první pizzy pro upoutávku na HP
+    const { data: pizzas, error } = await supabase
+      .from('pizzas')
+      .select('*')
+      .order('id', { ascending: true })
+      .limit(3);
+
+    if (error) {
+      throw error;
+    }
+
+    if (!pizzas || pizzas.length === 0) {
+      return null; // Pokud nic není v DB, sekce se na HP schová
+    }
+
+    return (
+      <section className="max-w-[85rem] mx-auto px-4 py-16 bg-white">
+        {/* Nadpis a krátký lákavý text */}
+        <div className="text-center mb-12">
+          <h2 className="text-3xl sm:text-4xl font-heading font-black text-brand-dark uppercase italic tracking-tighter mb-2">
+            Naše <span className="text-brand-primary">Bestsellery</span>
+          </h2>
+          <p className="text-gray-500 text-sm sm:text-base">
+            Ochutnejte ty nejoblíbenější kousky přímo z naší pece.
+          </p>
+        </div>
+
+        {/* Karty s 3 pizzami */}
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
+          {pizzas.map((pizza: Pizza) => (
+            <PizzaCard key={pizza.id} pizza={pizza} />
+          ))}
+        </div>
+
+        {/* Tlačítko na kompletní nabídku */}
+        <div className="mt-12 text-center">
+          <Link 
+            href="/menu" 
+            className="inline-flex items-center gap-2 bg-brand-dark text-white font-black px-8 py-4 rounded-full hover:bg-neutral-800 transition-all uppercase italic tracking-wider shadow-lg hover:shadow-xl hover:-translate-y-0.5 cursor-pointer"
+          >
+            Prohlédnout kompletní menu 
+            <span className="text-brand-primary">→</span>
+          </Link>
+        </div>
+      </section>
+    );
+  } catch (error) {
+    console.error("Chyba při načítání bestsellerů ze Supabase:", error);
+    return null; // Při chybě se sekce na HP nezobrazí rozbitá
+  }
+}
+</file>
+
+<file path="components/CartContext.tsx">
+"use client";
+
+import React, { createContext, useContext, useState, useEffect } from "react";
+import { Pizza, ExtraIngredient, CartItem } from "@/constants";
+
+interface CartContextType {
+  cart: CartItem[];
+  addToCart: (pizza: Pizza, selectedExtras?: ExtraIngredient[], quantity?: number) => void;
+  removeFromCart: (cartItemId: string) => void;
+  updateQuantity: (cartItemId: string, delta: number) => void;
+  cartCount: number;
+  totalPrice: number;
+  clearCart: () => void;
+}
+
+const CartContext = createContext<CartContextType | undefined>(undefined);
+
+// Pomocná funkce pro vytvoření stabilního klíče položky
+function generateCartItemId(pizzaId: number, extras: ExtraIngredient[]): string {
+  const sortedExtraIds = extras.map((e) => e.id).sort((a, b) => a - b).join("-");
+  return `${pizzaId}_${sortedExtraIds}`;
+}
+
+export function CartProvider({ children }: { children: React.ReactNode }) {
+  const [cart, setCart] = useState<CartItem[]>([]);
+
+  // Načtení z localStorage při startu
+  useEffect(() => {
+    const saved = localStorage.getItem("pizza_cart");
+    if (saved) {
+      try {
+        setCart(JSON.parse(saved));
+      } catch (e) {
+        console.error("Chyba při čtení košíku:", e);
+      }
+    }
+  }, []);
+
+  // Uložení do localStorage při změně
+  useEffect(() => {
+    localStorage.setItem("pizza_cart", JSON.stringify(cart));
+  }, [cart]);
+
+  const addToCart = (pizza: Pizza, selectedExtras: ExtraIngredient[] = [], quantity = 1) => {
+    const cartItemId = generateCartItemId(pizza.id, selectedExtras);
+    const extrasTotal = selectedExtras.reduce((sum, e) => sum + e.price, 0);
+    const unitPrice = pizza.price + extrasTotal;
+
+    setCart((prevCart) => {
+      const existingItem = prevCart.find((item) => item.cartItemId === cartItemId);
+
+      if (existingItem) {
+        return prevCart.map((item) =>
+          item.cartItemId === cartItemId
+            ? { ...item, quantity: item.quantity + quantity }
+            : item
+        );
+      }
+
+      return [
+        ...prevCart,
+        {
+          cartItemId,
+          pizza,
+          selectedExtras,
+          unitPrice,
+          quantity,
+        },
+      ];
+    });
+  };
+
+  const updateQuantity = (cartItemId: string, delta: number) => {
+    setCart((prev) =>
+      prev
+        .map((item) => {
+          if (item.cartItemId === cartItemId) {
+            const newQty = item.quantity + delta;
+            return newQty > 0 ? { ...item, quantity: newQty } : null;
+          }
+          return item;
+        })
+        .filter((item): item is CartItem => item !== null)
+    );
+  };
+
+  const removeFromCart = (cartItemId: string) => {
+    setCart((prev) => prev.filter((item) => item.cartItemId !== cartItemId));
+  };
+
+  const clearCart = () => setCart([]);
+
+  const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const totalPrice = cart.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
+
+  return (
+    <CartContext.Provider
+      value={{
+        cart,
+        addToCart,
+        removeFromCart,
+        updateQuantity,
+        cartCount,
+        totalPrice,
+        clearCart,
+      }}
+    >
+      {children}
+    </CartContext.Provider>
+  );
+}
+
+export function useCart() {
+  const context = useContext(CartContext);
+  if (!context) {
+    throw new Error("useCart musí být použit uvnitř CartProvideru");
+  }
+  return context;
+}
+</file>
+
+<file path="components/Footer.tsx">
+import Link from "next/link";
+
+export default function Footer() {
+  return (
+    <footer className="bg-brand-dark text-gray-400 py-16 px-4 pt-20 pb-16">
+      <div className="max-w-[85rem] mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
+          
+          {/* Brand Sloupec */}
+          <div className="col-span-1 md:col-span-1">
+            <Link className="text-2xl font-heading font-black text-white uppercase italic tracking-tighter" href="/">
+              Pavlík's <span className="text-brand-primary">Pizza</span>
+            </Link>
+            <p className="mt-4 text-sm leading-relaxed">
+              Tradiční italská pizza pečená s láskou v peci na dřevo. Používáme jen ty nejčerstvější suroviny přímo od farmářů.
+            </p>
+          </div>
+
+          {/* Odkazy */}
+          <div>
+            <h4 className="text-white font-bold mb-4 uppercase text-xs tracking-widest">Navigace</h4>
+            <ul className="space-y-2 text-sm">
+              <li><Link href="/menu" className="hover:text-brand-primary transition-colors">Kompletní menu</Link></li>
+              <li><Link href="/o-nas" className="hover:text-brand-primary transition-colors">Náš příběh</Link></li>
+              <li><Link href="/kontakt" className="hover:text-brand-primary transition-colors">Kontakt & Kde nás najdete</Link></li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="text-white font-bold mb-4 uppercase text-xs tracking-widest">Informace</h4>
+            <ul className="space-y-2 text-sm">
+              <li><Link href="/o-nas" className="hover:text-brand-primary transition-colors">O pečení na dřevě</Link></li>
+              <li><Link href="/menu" className="hover:text-brand-primary transition-colors">Alergeny u produktů</Link></li>
+              <li><Link href="/kontakt" className="hover:text-brand-primary transition-colors">Firemní catering</Link></li>
+            </ul>
+          </div>
+
+          {/* Kontakt */}
+          <div>
+            <h4 className="text-white font-bold mb-4 uppercase text-xs tracking-widest">Kde nás najdete?</h4>
+            <p className="text-sm">Italská ulice 123/4, Praha 2</p>
+            <p className="text-sm mt-2 text-brand-primary font-bold">+420 123 456 789</p>
+            <p className="text-xs text-gray-500 mt-1">ahoj@pavlikovapizza.cz</p>
+          </div>
+        </div>
+
+        <div className="pt-8 border-t border-white/10 text-center text-xs">
+          <p>© 2026 Pavlík's Pizza. Všechna práva vyhrazena. Upečeno s Next.js.</p>
+        </div>
+      </div>
+    </footer>
+  );
+}
+</file>
+
+<file path="components/Hero.tsx">
+import Image from 'next/image';
+import Link from 'next/link'; // 1. Nezapomeň importovat Link
+
+export default function Hero() {
+  return (
+    <section className="relative w-full h-[calc(100vh-61px)] min-h-[600px] flex items-center overflow-hidden">
+      
+      {/* 1. OBRÁZEK NA POZADÍ */}
+      <Image 
+        src="/hero-pizza.png" 
+        alt="Křupavá pizza na pozadí"
+        fill
+        className="object-cover z-0"
+        priority
+      />
+
+      {/* 2. OVERLAY (Tmavý filtr, aby byl text čitelný) */}
+      <div className="absolute inset-0 bg-black/50 z-10"></div>
+
+      {/* 3. OBSAH (Musí mít z-20, aby byl nad obrázkem i filtrem) */}
+      <div className="relative z-20 max-w-[85rem] mx-auto px-4 sm:px-6 lg:px-8 w-full">
+        <div className="max-w-2xl">
+          <h1 className="text-4xl sm:text-6xl font-heading font-black text-white italic leading-tight">
+            Poctivá pizza <br />
+            <span className="text-brand-primary">přímo u vás doma</span>
+          </h1>
+          
+          <p className="mt-5 text-xl text-gray-200 max-w-lg">
+            Pomalé kynutí, čerstvá rajčata a respekt k tradici. <br />
+            Nic víc v tom není.
+          </p>
+          
+          {/* 4. UPRAVENÁ TLAČÍTKA - Nyní pouze jedno dominantní přes <Link> */}
+          <div className="mt-10 flex flex-col sm:flex-row gap-4">
+            <Link 
+              href="/menu" // 2. Sem doplň správnou routu (např. /menu, nebo #menu pokud listuješ dolů)
+              className="py-4 px-10 inline-flex justify-center items-center font-bold rounded-full bg-brand-primary text-brand-dark hover:bg-white hover:scale-105 transition-all shadow-2xl shadow-brand-primary/30 text-center"
+            >
+              OBJEDNAT PIZZU
+            </Link>
+          </div>
+        </div>
+      </div>
+
+    </section>
+  );
+}
+</file>
+
+<file path="components/Navbar.tsx">
+"use client";
+import { useState } from "react";
+import Link from "next/link";
+import { useCart } from "./CartContext";
+
+export default function Navbar() {
+  const [isOpen, setIsOpen] = useState<boolean>(false);
+  const { cartCount } = useCart();
+
+  return (
+    <header className="sticky top-0 z-50 w-full py-3 bg-white/80 backdrop-blur-md border-b border-gray-100 shadow-sm">
+      <nav className="max-w-[85rem] w-full mx-auto px-4 sm:flex sm:items-center sm:justify-between">
+        <div className="flex items-center justify-between">
+          <div className="bg-white px-4 py-2 rounded-full shadow-sm border border-gray-100 flex items-center justify-center">
+            <Link className="flex-none text-2xl font-heading font-black text-brand-dark uppercase italic tracking-tighter leading-none" href="/">
+              Pavlík's <span className="text-brand-primary">Pizza</span>
+            </Link>
+          </div>
+
+          <div className="sm:hidden">
+            <button onClick={() => setIsOpen(!isOpen)} className="p-2 text-brand-dark hover:bg-brand-light rounded-xl transition-colors">
+              <svg className="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d={isOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div className={`${isOpen ? 'block' : 'hidden'} basis-full grow sm:block transition-all`}>
+          <div className="flex flex-col gap-y-4 gap-x-8 mt-5 sm:flex-row sm:items-center sm:justify-end sm:mt-0 sm:ps-5">
+            <Link className="text-sm font-bold text-brand-dark hover:text-brand-primary transition-colors" href="/menu">Menu</Link>
+            <Link className="text-sm font-medium text-gray-500 hover:text-brand-dark transition-colors" href="/o-nas">O nás</Link>
+            <Link className="text-sm font-medium text-gray-500 hover:text-brand-dark transition-colors" href="/kontakt">Kontakt</Link>
+
+            <Link href="/kosik" className="inline-flex items-center gap-x-2 bg-brand-dark text-white px-5 py-2.5 rounded-full text-sm font-bold hover:bg-brand-primary hover:text-brand-dark transition-all transform active:scale-95 shadow-lg shadow-brand-dark/10">
+              <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+                <path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+              Košík
+              <span className="bg-brand-primary text-brand-dark text-[10px] px-1.5 py-0.5 rounded-full ml-1 font-black">
+                {cartCount}
+              </span>
+            </Link>
+          </div>
+        </div>
+      </nav>
+    </header>
+  );
+}
+</file>
+
+<file path="components/Newsletter.tsx">
+export default function Newsletter() {
+  return (
+    <section className="max-w-[85rem] mx-auto px-4 py-12 sm:px-6 lg:px-8">
+      {/* Box s newsletterem */}
+      <div className="bg-brand-dark rounded-3xl p-8 md:p-12 shadow-2xl relative overflow-hidden">
+        
+        {/* Dekorativní prvek na pozadí (volitelné) */}
+        <div className="absolute top-0 right-0 -mt-20 -mr-20 size-64 bg-brand-primary/10 rounded-full blur-3xl"></div>
+
+        <div className="relative z-10 grid md:grid-cols-2 gap-8 items-center">
+          <div>
+            <h2 className="text-2xl md:text-3xl font-heading font-black text-white uppercase italic leading-tight">
+              Chceš slevu <span className="text-brand-primary">10 %</span> na první nákup?
+            </h2>
+            <p className="mt-3 text-gray-400">
+              Nech nám tu svůj e-mail a my ti pošleme kód. Slibujeme, že nebudeme spamovat, jen posílat ty nejlepší akce.
+            </p>
+          </div>
+
+          <form className="flex flex-col sm:flex-row gap-3">
+            <input 
+              type="email" 
+              placeholder="Tvůj e-mail" 
+              className="grow bg-white/10 border border-white/20 text-white placeholder:text-gray-500 rounded-full py-3 px-6 focus:outline-none focus:ring-2 focus:ring-brand-primary transition-all"
+              required
+            />
+            <button 
+              type="submit"
+              className="bg-brand-primary text-brand-dark font-bold py-3 px-8 rounded-full hover:bg-white hover:scale-105 active:scale-95 transition-all whitespace-nowrap"
+            >
+              Chci slevu!
+            </button>
+          </form>
+        </div>
+
+        {/* Malý text dole */}
+        <p className="mt-6 text-[10px] text-gray-500 text-center md:text-left">
+          Kliknutím na tlačítko souhlasíš se zpracováním osobních údajů. Můžeš se odhlásit kdykoliv.
+        </p>
+      </div>
+    </section>
+  );
+}
+</file>
+
+<file path="components/PizzaCard.tsx">
+"use client";
+
+import Image from 'next/image';
+import Link from 'next/link';
+import { Pizza } from "@/constants";
+
+export default function PizzaCard({ pizza }: { pizza: Pizza }) {
+  return (
+    <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between text-left">
+      <div>
+        {/* Klikací fotka */}
+        <Link href={`/menu/${pizza.id}`} className="block relative w-full h-48 rounded-xl mb-4 overflow-hidden bg-gray-100 group">
+          {pizza.image ? (
+            <Image 
+              src={pizza.image} 
+              alt={pizza.name} 
+              fill
+              className="object-cover group-hover:scale-105 transition-transform duration-300"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-gray-400">
+              Bez obrázku
+            </div>
+          )}
+        </Link>
+        
+        {/* Klikací název a cena */}
+        <div className="flex justify-between items-start mb-2">
+          <Link href={`/menu/${pizza.id}`}>
+            <h3 className="text-xl font-bold text-gray-800 hover:text-yellow-600 transition-colors cursor-pointer">
+              {pizza.name}
+            </h3>
+          </Link>
+          <span className="bg-yellow-100 text-yellow-800 text-sm font-bold px-2.5 py-0.5 rounded-full whitespace-nowrap">
+            {pizza.price} Kč
+          </span>
+        </div>
+
+        {/* Ingredience */}
+        <p className="text-gray-600 text-sm mb-6">
+          {Array.isArray(pizza.ingredients) ? pizza.ingredients.join(", ") : pizza.ingredients}
+        </p>
+      </div>
+
+      {/* Tlačítko přesměruje na detail */}
+      <Link 
+        href={`/menu/${pizza.id}`}
+        className="w-full py-3 px-4 inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-lg border border-transparent bg-yellow-500 text-black hover:bg-yellow-600 transition-colors uppercase active:scale-95 transform cursor-pointer text-center"
+      >
+        Zobrazit detail
+      </Link>
+    </div>
+  );
+}
+</file>
+
+<file path="components/PizzaDetailClient.tsx">
+"use client";
+
+import { useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Pizza, ExtraIngredient } from "@/constants";
+import { useCart } from "./CartContext";
+
+interface Props {
+  pizza: Pizza;
+  extraIngredients: ExtraIngredient[];
+}
+
+export default function PizzaDetailClient({ pizza, extraIngredients }: Props) {
+  const router = useRouter();
+  const { addToCart } = useCart();
+  const [quantity, setQuantity] = useState<number>(1);
+  const [selectedExtras, setSelectedExtras] = useState<ExtraIngredient[]>([]);
+
+  const toggleExtra = (extra: ExtraIngredient) => {
+    setSelectedExtras((prev) =>
+      prev.some((e) => e.id === extra.id)
+        ? prev.filter((e) => e.id !== extra.id)
+        : [...prev, extra]
+    );
+  };
+
+  const extraPriceSum = selectedExtras.reduce((sum, item) => sum + item.price, 0);
+  const singlePizzaPrice = pizza.price + extraPriceSum;
+  const totalPrice = singlePizzaPrice * quantity;
+
+  const handleAddToCart = () => {
+    addToCart(pizza, selectedExtras, quantity);
+    router.push("/kosik");
+  };
+
+  const ingredientsList = Array.isArray(pizza.ingredients)
+    ? pizza.ingredients
+    : typeof pizza.ingredients === "string"
+    ? (pizza.ingredients as string).split(",").map((s) => s.trim())
+    : [];
+
+  const allergensList = pizza.allergens || [];
+
+  return (
+    <main className="bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 min-h-[calc(100vh-200px)]">
+      <div className="max-w-5xl mx-auto">
+        <Link
+          href="/menu"
+          className="inline-flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-brand-dark mb-6 transition-colors"
+        >
+          ← Zpět do kompletního menu
+        </Link>
+
+        <div className="bg-white border border-gray-200 rounded-3xl p-6 sm:p-10 shadow-sm grid grid-cols-1 md:grid-cols-2 gap-10 items-start">
+          <div className="relative w-full h-72 sm:h-96 lg:h-[450px] rounded-2xl overflow-hidden bg-gray-100 shadow-inner">
+            {pizza.image ? (
+              <Image
+                src={pizza.image}
+                alt={pizza.name}
+                fill
+                className="object-cover"
+                priority
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-4xl">🍕</div>
+            )}
+          </div>
+
+          <div className="flex flex-col justify-between h-full">
+            <div>
+              <div className="flex justify-between items-start gap-4 mb-4 pb-4 border-b border-gray-100">
+                <h1 className="text-3xl sm:text-4xl font-black text-brand-dark uppercase italic tracking-tight">
+                  {pizza.name}
+                </h1>
+                <span className="bg-brand-primary text-brand-dark text-2xl font-black px-4 py-1.5 rounded-full whitespace-nowrap italic">
+                  {singlePizzaPrice} Kč
+                </span>
+              </div>
+
+              <div className="mb-6">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">
+                  Základní Složení
+                </h2>
+                <div className="flex flex-wrap gap-2">
+                  {ingredientsList.map((ing, idx) => (
+                    <span
+                      key={idx}
+                      className="bg-gray-100 text-gray-800 text-sm font-medium px-3 py-1 rounded-lg"
+                    >
+                      {ing}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {extraIngredients.length > 0 && (
+                <div className="mb-6">
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-brand-dark mb-3">
+                    Přidat extra suroviny
+                  </h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {extraIngredients.map((extra) => {
+                      const isSelected = selectedExtras.some((e) => e.id === extra.id);
+                      return (
+                        <button
+                          key={extra.id}
+                          type="button"
+                          onClick={() => toggleExtra(extra)}
+                          className={`flex items-center justify-between p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                            isSelected
+                              ? "border-brand-primary bg-yellow-50 text-brand-dark font-bold shadow-xs"
+                              : "border-gray-200 bg-white hover:border-gray-300 text-gray-700"
+                          }`}
+                        >
+                          <span className="text-sm">{extra.name}</span>
+                          <span className="text-xs font-bold text-gray-500">+{extra.price} Kč</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div className="mb-8 bg-amber-50/60 border border-amber-200/60 rounded-2xl p-4">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-amber-800 mb-2">
+                  Obsažené Alergeny
+                </h2>
+                {allergensList.length === 0 ? (
+                  <p className="text-xs text-gray-500 italic">Tato pizza neobsahuje žádné evidované alergeny.</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {allergensList.map((allergen, idx) => (
+                      <span
+                        key={idx}
+                        className="bg-white border border-amber-300 text-amber-900 text-xs px-2.5 py-1 rounded-lg font-semibold shadow-xs"
+                      >
+                        {allergen}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-4 pt-4 border-t border-gray-100">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center bg-gray-100 rounded-xl p-1 border border-gray-200">
+                  <button
+                    onClick={() => setQuantity((prev) => Math.max(1, prev - 1))}
+                    className="size-9 bg-white rounded-lg flex items-center justify-center font-bold text-gray-700 shadow-xs hover:bg-gray-200 transition-colors cursor-pointer"
+                  >
+                    -
+                  </button>
+                  <span className="px-4 font-bold text-gray-800 min-w-[2.5rem] text-center">
+                    {quantity} ks
+                  </span>
+                  <button
+                    onClick={() => setQuantity((prev) => prev + 1)}
+                    className="size-9 bg-white rounded-lg flex items-center justify-center font-bold text-gray-700 shadow-xs hover:bg-brand-primary transition-colors cursor-pointer"
+                  >
+                    +
+                  </button>
+                </div>
+
+                <button
+                  onClick={handleAddToCart}
+                  className="flex-1 py-3.5 px-6 bg-brand-primary text-brand-dark font-black rounded-xl uppercase italic tracking-wider hover:bg-yellow-500 active:scale-[0.99] transition-all cursor-pointer shadow-md"
+                >
+                  Přidat do košíku ({totalPrice} Kč)
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}
+</file>
+
+<file path="components/WhyUs.tsx">
+export default function Features() {
+  const features = [
+    { title: "Tradiční pec", desc: "Pečeme na bukovém dřevě pro tu pravou chuť.", icon: "🔥" },
+    { title: "DOPrava zdarma", desc: "Při objednávce nad 500 Kč neplatíš ani korunu.", icon: "🚗" },
+    { title: "IT suroviny", desc: "Mouka, rajčata i mozzarella přímo z Neapole.", icon: "🇮🇹" },
+  ];
+
+  return (
+    <section className="py-12 bg-brand-light">
+      <div className="max-w-[85rem] mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid sm:grid-cols-3 gap-8 text-center">
+          {features.map((f, i) => (
+            <div key={i} className="p-6 transition-all hover:translate-y-[-5px]">
+              <div className="text-4xl mb-4">{f.icon}</div>
+              <h3 className="text-lg font-bold text-brand-dark uppercase italic tracking-tight">{f.title}</h3>
+              <p className="text-sm text-gray-600 mt-2 leading-relaxed">{f.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+</file>
+
+<file path="lib/supabase.ts">
+import { createClient } from '@supabase/supabase-js';
+
+// Tyhle proměnné si vytáhne z tvého souboru .env.local
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+</file>
+
+<file path="constants.ts">
+// 1. Model pro surovinu z DB
+export interface ExtraIngredient {
+  id: number;
+  name: string;
+  price: number;
+}
+
+// 2. Model pro pizzu z DB
+export interface Pizza {
+  id: number;
+  name: string;
+  ingredients: string[];
+  price: number;
+  image: string;
+  allergens?: string[];
+}
+
+// 3. Model pro položku v košíku (čistě oddělená od DB modelu)
+export interface CartItem {
+  cartItemId: string; // Unikátní identifikátor položky v košíku
+  pizza: Pizza;
+  selectedExtras: ExtraIngredient[];
+  unitPrice: number; // Cena 1 ks (základ + extra přísady)
+  quantity: number;
+}
+</file>
+
+<file path="middleware.ts">
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+
+export function middleware(request: NextRequest) {
+  // 1. Díváme se, jestli se uživatel cpe do sekce /admin
+  if (request.nextUrl.pathname.startsWith('/admin')) {
+    
+    // 2. Koukneme mu na ruku, jestli má razítko (cookie jménem 'admin_session')
+    const hasStamp = request.cookies.has('admin_session');
+
+    // 3. Pokud nemá razítko a ještě není na přihlašovací stránce, vyhodíme ho tam
+    if (!hasStamp && request.nextUrl.pathname !== '/admin/login') {
+      return NextResponse.redirect(new URL('/admin/login', request.url));
+    }
+  }
+  
+  // Jinak ho pustíme dál (na zbytek webu, kde si lidi normálně kupují pizzu)
+  return NextResponse.next();
+}
+
+// Tímhle říkáme, ať vyhazovač nehlídá obrázky a běžný web, ale jen složku admin
+export const config = {
+  matcher: ['/admin/:path*'],
+};
+</file>
+
+<file path="app/globals.css">
+@import "tailwindcss";
+
+@theme {
+  --color-brand-primary: #facc15;    /* Ta tvoje žlutá */
+  --color-brand-secondary: #dc2626;  /* Červená (třeba na pálivé pizzy) */
+  --color-brand-dark: #18181b;       /* Tmavá na texty */
+  --color-brand-light: #fcfbf7;      /* Světlé pozadí webu */
+  
+  --font-heading: "Montserrat", sans-serif;
+
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #111827;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+
+  font-family: Arial, Helvetica, sans-serif;
+}
+</file>
+
+<file path="app/layout.tsx">
+import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import "./globals.css";
+
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
+import { CartProvider } from "@/components/CartContext"; // <-- 1. PŘIDANÝ IMPORT
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+export const metadata: Metadata = {
+  title: "E-shop",
+  description: "Full stack e-shop postavený na Next.js",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="cs">
+      {/* Přidali jsme bg-white, aby pozadí bylo vždy bílé */}
+      <body className="bg-white min-h-screen flex flex-col">
+        {/* 2. OBALENÍ CELE APLIKACE DO CARTPROVIDERU */}
+        <CartProvider>
+          <Navbar />
+          <main className="flex-grow">
+            {children}
+          </main>
+          <Footer />
+        </CartProvider>
+      </body>
+    </html>
+  );
+}
+</file>
+
+<file path="app/page.tsx">
+import Hero from '@/components/Hero';
+import Bestsellers from '@/components/Bestsellers';
+import WhyUs from '@/components/WhyUs';
+import Newsletter from '@/components/Newsletter';
+
+export default function Home() {
+  return (
+    <main className="w-full">
+      <Hero />
+      <Bestsellers />
+      <WhyUs />
+      {/* Tady časem přibude třeba <Newsletter /> nebo <Reviews /> */}
+      <Newsletter />
+    </main>
+  );
+}
+</file>
+
+<file path="public/file.svg">
+<svg fill="none" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M14.5 13.5V5.41a1 1 0 0 0-.3-.7L9.8.29A1 1 0 0 0 9.08 0H1.5v13.5A2.5 2.5 0 0 0 4 16h8a2.5 2.5 0 0 0 2.5-2.5m-1.5 0v-7H8v-5H3v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1M9.5 5V2.12L12.38 5zM5.13 5h-.62v1.25h2.12V5zm-.62 3h7.12v1.25H4.5zm.62 3h-.62v1.25h7.12V11z" clip-rule="evenodd" fill="#666" fill-rule="evenodd"/></svg>
+</file>
+
+<file path="public/globe.svg">
+<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><g clip-path="url(#a)"><path fill-rule="evenodd" clip-rule="evenodd" d="M10.27 14.1a6.5 6.5 0 0 0 3.67-3.45q-1.24.21-2.7.34-.31 1.83-.97 3.1M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16m.48-1.52a7 7 0 0 1-.96 0H7.5a4 4 0 0 1-.84-1.32q-.38-.89-.63-2.08a40 40 0 0 0 3.92 0q-.25 1.2-.63 2.08a4 4 0 0 1-.84 1.31zm2.94-4.76q1.66-.15 2.95-.43a7 7 0 0 0 0-2.58q-1.3-.27-2.95-.43a18 18 0 0 1 0 3.44m-1.27-3.54a17 17 0 0 1 0 3.64 39 39 0 0 1-4.3 0 17 17 0 0 1 0-3.64 39 39 0 0 1 4.3 0m1.1-1.17q1.45.13 2.69.34a6.5 6.5 0 0 0-3.67-3.44q.65 1.26.98 3.1M8.48 1.5l.01.02q.41.37.84 1.31.38.89.63 2.08a40 40 0 0 0-3.92 0q.25-1.2.63-2.08a4 4 0 0 1 .85-1.32 7 7 0 0 1 .96 0m-2.75.4a6.5 6.5 0 0 0-3.67 3.44 29 29 0 0 1 2.7-.34q.31-1.83.97-3.1M4.58 6.28q-1.66.16-2.95.43a7 7 0 0 0 0 2.58q1.3.27 2.95.43a18 18 0 0 1 0-3.44m.17 4.71q-1.45-.12-2.69-.34a6.5 6.5 0 0 0 3.67 3.44q-.65-1.27-.98-3.1" fill="#666"/></g><defs><clipPath id="a"><path fill="#fff" d="M0 0h16v16H0z"/></clipPath></defs></svg>
+</file>
+
+<file path="public/next.svg">
+<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 394 80"><path fill="#000" d="M262 0h68.5v12.7h-27.2v66.6h-13.6V12.7H262V0ZM149 0v12.7H94v20.4h44.3v12.6H94v21h55v12.6H80.5V0h68.7zm34.3 0h-17.8l63.8 79.4h17.9l-32-39.7 32-39.6h-17.9l-23 28.6-23-28.6zm18.3 56.7-9-11-27.1 33.7h17.8l18.3-22.7z"/><path fill="#000" d="M81 79.3 17 0H0v79.3h13.6V17l50.2 62.3H81Zm252.6-.4c-1 0-1.8-.4-2.5-1s-1.1-1.6-1.1-2.6.3-1.8 1-2.5 1.6-1 2.6-1 1.8.3 2.5 1a3.4 3.4 0 0 1 .6 4.3 3.7 3.7 0 0 1-3 1.8zm23.2-33.5h6v23.3c0 2.1-.4 4-1.3 5.5a9.1 9.1 0 0 1-3.8 3.5c-1.6.8-3.5 1.3-5.7 1.3-2 0-3.7-.4-5.3-1s-2.8-1.8-3.7-3.2c-.9-1.3-1.4-3-1.4-5h6c.1.8.3 1.6.7 2.2s1 1.2 1.6 1.5c.7.4 1.5.5 2.4.5 1 0 1.8-.2 2.4-.6a4 4 0 0 0 1.6-1.8c.3-.8.5-1.8.5-3V45.5zm30.9 9.1a4.4 4.4 0 0 0-2-3.3 7.5 7.5 0 0 0-4.3-1.1c-1.3 0-2.4.2-3.3.5-.9.4-1.6 1-2 1.6a3.5 3.5 0 0 0-.3 4c.3.5.7.9 1.3 1.2l1.8 1 2 .5 3.2.8c1.3.3 2.5.7 3.7 1.2a13 13 0 0 1 3.2 1.8 8.1 8.1 0 0 1 3 6.5c0 2-.5 3.7-1.5 5.1a10 10 0 0 1-4.4 3.5c-1.8.8-4.1 1.2-6.8 1.2-2.6 0-4.9-.4-6.8-1.2-2-.8-3.4-2-4.5-3.5a10 10 0 0 1-1.7-5.6h6a5 5 0 0 0 3.5 4.6c1 .4 2.2.6 3.4.6 1.3 0 2.5-.2 3.5-.6 1-.4 1.8-1 2.4-1.7a4 4 0 0 0 .8-2.4c0-.9-.2-1.6-.7-2.2a11 11 0 0 0-2.1-1.4l-3.2-1-3.8-1c-2.8-.7-5-1.7-6.6-3.2a7.2 7.2 0 0 1-2.4-5.7 8 8 0 0 1 1.7-5 10 10 0 0 1 4.3-3.5c2-.8 4-1.2 6.4-1.2 2.3 0 4.4.4 6.2 1.2 1.8.8 3.2 2 4.3 3.4 1 1.4 1.5 3 1.5 5h-5.8z"/></svg>
+</file>
+
+<file path="public/vercel.svg">
+<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1155 1000"><path d="m577.3 0 577.4 1000H0z" fill="#fff"/></svg>
+</file>
+
+<file path="public/window.svg">
+<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fill-rule="evenodd" clip-rule="evenodd" d="M1.5 2.5h13v10a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1zM0 1h16v11.5a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 0 12.5zm3.75 4.5a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5M7 4.75a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0m1.75.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5" fill="#666"/></svg>
+</file>
+
+<file path=".gitignore">
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+</file>
+
+<file path="AGENTS.md">
+<!-- BEGIN:nextjs-agent-rules -->
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
+<!-- END:nextjs-agent-rules -->
+</file>
+
+<file path="CLAUDE.md">
+@AGENTS.md
+</file>
+
+<file path="eslint.config.mjs">
+import { defineConfig, globalIgnores } from "eslint/config";
+import nextVitals from "eslint-config-next/core-web-vitals";
+import nextTs from "eslint-config-next/typescript";
+
+const eslintConfig = defineConfig([
+  ...nextVitals,
+  ...nextTs,
+  // Override default ignores of eslint-config-next.
+  globalIgnores([
+    // Default ignores of eslint-config-next:
+    ".next/**",
+    "out/**",
+    "build/**",
+    "next-env.d.ts",
+  ]),
+]);
+
+export default eslintConfig;
+</file>
+
+<file path="next.config.ts">
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '*.supabase.co',
+        port: '',
+        pathname: '/storage/v1/object/public/**',
+      },
+    ],
+  },
+
+};
+
+export default nextConfig;
+</file>
+
+<file path="package.json">
+{
+  "name": "eshop",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.110.0",
+    "next": "16.2.6",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.6",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
+</file>
+
+<file path="postcss.config.mjs">
+const config = {
+  plugins: {
+    "@tailwindcss/postcss": {},
+  },
+};
+
+export default config;
+</file>
+
+<file path="README.md">
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+
+## Getting Started
+
+First, run the development server:
+
+```bash
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+
+## Learn More
+
+To learn more about Next.js, take a look at the following resources:
+
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+
+## Deploy on Vercel
+
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+</file>
+
+<file path="tsconfig.json">
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./*"]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
+    "**/*.mts"
+  ],
+  "exclude": ["node_modules"]
+}
+</file>
+
+</files>
